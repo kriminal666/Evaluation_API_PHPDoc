@@ -1,0 +1,229 @@
+<?php namespace Evaluation\Http\Controllers\ModelControllers;
+
+use Evaluation\Http\Controllers\Api\ApiController;
+use Evaluation\Http\Requests;
+use Evaluation\StudySubmodules;
+use Evaluation\Transformers\StudySubmodulesTransformer;
+use Request;
+
+/**
+ * Class StudySubmodulesController
+ * @package Evaluation\Http\Controllers\ModelControllers
+ */
+class StudySubmodulesController extends ApiController
+{
+
+    /**
+     * @var StudySubmodulesTransformer
+     */
+    protected $subModuleTransformer;
+
+    /**
+     * Create a new controller instance.
+     *
+     * @param StudySubmodulesTransformer $subModuleTransformer
+     */
+    public function __construct(StudySubmodulesTransformer $subModuleTransformer)
+    {
+        $this->middleware('auth');
+
+        $this->subModuleTransformer = $subModuleTransformer;
+    }
+
+    /**
+     * Display a listing of the resource.
+     *
+     * @api
+     * @return Response
+     */
+    public function index()
+    {
+        $studySubModules = StudySubmodules::all();
+
+        return $this->respond([
+
+            'data' => $this->subModuleTransformer->transformCollection($studySubModules->toArray())
+
+        ]);
+    }
+
+    /**
+     * Show the form for creating a new resource.
+     *
+     * @return Response
+     */
+    public function create()
+    {
+        //
+    }
+
+    /**
+     * Store a newly created resource in storage.
+     *
+     * @api
+     * @return Response
+     */
+    public function store()
+    {
+        StudySubmodules::create(Request::all());
+
+        return $this->respondCreated('Submodule created');
+    }
+
+    /**
+     * Display the specified resource.
+     *
+     * @api
+     * @param  int $id
+     * @return Response
+     */
+    public function show($id)
+    {
+        $studySubModule = StudySubmodules::find($id);
+
+        if (!$studySubModule) {
+
+            return $this->respondNotFound('SubModule does not exists.');
+
+        }
+
+        return $this->respond([
+
+            'data' => $this->subModuleTransformer->transform($studySubModule)
+
+        ]);
+    }
+
+    /**
+     * Show the form for editing the specified resource.
+     *
+     * @api
+     * @param  int $id
+     * @return Response
+     */
+    public function edit($id)
+    {
+        //
+    }
+
+    /**
+     * Update the specified resource in storage.
+     *
+     * @api
+     * @param  int $id
+     * @return Response
+     */
+    public function update($id)
+    {
+        $subModule = StudySubmodules::findOrFail($id);
+
+        $subModule->study_submodules_name = Request::input('name');
+        $subModule->study_submodules_shortname = Request::input('shortName');
+        $subModule->study_submodules_study_module_id = Request::input('moduleId');
+        $subModule->study_submodules_courseid = Request::input('courseId');
+        $subModule->study_submodules_description = Request::input('description');
+        $subModule->study_submodules_order = Request::input('order');
+        $subModule->study_submodules_lastupdateUserId = Request::input('lastUpdateUserId');
+
+        $subModule->save();
+
+        return $subModule;
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     *
+     * @api
+     * @param  int $id
+     * @return Response
+     */
+    public function destroy($id)
+    {
+        $studySubModule = StudySubmodules::findOrFail($id);
+
+        $studySubModule->forceDelete();
+    }
+
+    /**
+     * Mark for deletion this
+     *
+     * @api
+     * @param $id
+     */
+    public function delete($id)
+    {
+        $subModule = StudySubmodules::findOrFail($id);
+        $subModule->delete();
+    }
+
+    /**
+     * Restore marked for deletion this
+     *
+     * @api
+     * @param $id
+     */
+    public function restore($id)
+    {
+
+        StudySubmodules::withTrashed()->where('grade_scale_id', '=', $id)->first()->restore();
+
+    }
+
+    /**
+     * Return all, included trashed
+     *
+     * @api
+     * @return \Illuminate\Database\Eloquent\Builder|static
+     */
+    public function getAllWithTrashed()
+    {
+
+        return StudySubmodules::withTrashed();
+    }
+
+    /**
+     * Return one trashed
+     *
+     * @api
+     * @param $id
+     * @return mixed
+     */
+    public function getOneTrashed($id)
+    {
+        $studySubModule = StudySubmodules::withTrashed()->where('grade_scale_id', '=', $id)->first();
+
+        if (!$studySubModule) {
+
+            return $this->respondNotFound('Study subModule does not exists.');
+        }
+
+        return $this->respond([
+
+            'data' => $this->subModuleTransformer->transform($studySubModule)
+
+        ]);
+
+    }
+
+    /**
+     * Get evaluations of one subModule
+     *
+     * @api
+     * @param $id
+     * @return mixed
+     */
+    public function getEvaluations($id)
+    {
+
+        $usersSubModulesEvaluations = StudySubmodules::find($id)->evaluations()->get();
+
+        if (!$usersSubModulesEvaluations) {
+            return $this->respondNotFound('Study SubModule does not exists');
+        }
+
+        return $usersSubModulesEvaluations->load('studySubModules', 'academicPeriods', 'user', 'mark');
+    }
+
+
+}
+
